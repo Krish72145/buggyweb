@@ -1,47 +1,123 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <title>Buggy Firebase Test</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <!-- ✅ Firebase v8 SDK (MOST STABLE FOR GITHUB PAGES) -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <title>Buggy User Map</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    html, body, #map { height: 100%; margin: 0; }
+    .status {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: black;
+      color: white;
+      padding: 8px 14px;
+      border-radius: 8px;
+      z-index: 900;
+      font-weight: bold;
+    }
+  </style>
 </head>
 
 <body>
-  <h1 id="status">Connecting to Firebase...</h1>
+<div id="map"></div>
+<div class="status" id="status">Connecting...</div>
 
-  <script>
-    // ✅ YOUR REAL FIREBASE CONFIG
-    var firebaseConfig = {
-      apiKey: "AIzaSyANpjWBgnG7Dw0dQFdsmbcw5et5oT-6cxQ",
-      authDomain: "buggy-nitt.firebaseapp.com",
-      databaseURL: "https://buggy-nitt-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "buggy-nitt",
-      storageBucket: "buggy-nitt.appspot.com",
-      messagingSenderId: "790523264958",
-      appId: "1:790523264958:web:b2e42c5e6f0952e2ad83ef"
-    };
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-    // ✅ Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
+<!-- ✅ FIREBASE (CORRECT SDK) -->
+<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-database-compat.js"></script>
 
-    var db = firebase.database();
+<script>
+/* ✅ YOUR FIREBASE CONFIG */
+const firebaseConfig = {
+  apiKey: "AIzaSyANpjWBgnG7Dw0dQFdsmbcw5et5oT-6cxQ",
+  authDomain: "buggy-nitt.firebaseapp.com",
+  databaseURL: "https://buggy-nitt-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "buggy-nitt",
+  storageBucket: "buggy-nitt.firebasestorage.app",
+  messagingSenderId: "790523264958",
+  appId: "1:790523264958:web:b2e42c5e6f0952e2ad83ef"
+};
 
-    // ✅ HARD TEST — Read your real buggy data
-    db.ref("buggies").once("value")
-      .then(function(snapshot) {
-        document.getElementById("status").innerHTML =
-          "✅ FIREBASE IS 100% CONNECTED";
-        console.log("Buggy Data:", snapshot.val());
-      })
-      .catch(function(error) {
-        document.getElementById("status").innerHTML =
-          "❌ FIREBASE ERROR: " + error.message;
-        console.error(error);
-      });
-  </script>
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+document.getElementById("status").innerText = "✅ Firebase Connected";
+
+/* ✅ MAP */
+const map = L.map("map").setView([10.7600, 78.8135], 16);
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+
+/* ✅ ICONS */
+const userIcon = L.icon({
+  iconUrl: "https://cdn-icons-png.flaticon.com/512/149/149071.png",
+  iconSize: [36, 36]
+});
+
+const buggyIcon = L.icon({
+  iconUrl: "https://cdn-icons-png.flaticon.com/512/61/61214.png",
+  iconSize: [40, 40]
+});
+
+/* ✅ MARKERS */
+let userMarker = null;
+const buggyMarkers = {};
+
+/* ✅ DISTANCE FUNCTION */
+function getDistance(lat1, lng1, lat2, lng2) {
+  return map.distance([lat1, lng1], [lat2, lng2]);
+}
+
+/* ✅ AUTO ASSIGN NEAREST BUGGY */
+function assignNearestBuggy(userLat, userLng, buggies, phone) {
+  let nearest = null;
+  let minDist = Infinity;
+
+  for (const id in buggies) {
+    const b = buggies[id];
+    const d = getDistance(userLat, userLng, b.lat, b.lng);
+    if (d < minDist) {
+      minDist = d;
+      nearest = id;
+    }
+  }
+
+  db.ref("users/" + phone + "/assignedBuggy").set(nearest);
+}
+
+/* ✅ LIVE BUGGY LISTENER */
+db.ref("buggies").on("value", snap => {
+  const data = snap.val();
+  for (const id in data) {
+    const b = data[id];
+    if (!buggyMarkers[id]) {
+      buggyMarkers[id] = L.marker([b.lat, b.lng], { icon: buggyIcon }).addTo(map);
+    } else {
+      buggyMarkers[id].setLatLng([b.lat, b.lng]);
+    }
+  }
+});
+
+/* ✅ USER LISTENER (ONLY ONE USER AT A TIME) */
+db.ref("users").limitToLast(1).on("value", snap => {
+  snap.forEach(child => {
+    const phone = child.key;
+    const u = child.val();
+
+    if (!userMarker) {
+      userMarker = L.marker([u.lat, u.lng], { icon: userIcon }).addTo(map);
+    } else {
+      userMarker.setLatLng([u.lat, u.lng]);
+    }
+
+    db.ref("buggies").once("value").then(bsnap => {
+      assignNearestBuggy(u.lat, u.lng, bsnap.val(), phone);
+    });
+  });
+});
+</script>
 </body>
 </html>
