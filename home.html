@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Buggy Firebase Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- ✅ Firebase v8 SDK (MOST STABLE FOR GITHUB PAGES) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+</head>
+
+<body>
+  <h1 id="status">Connecting to Firebase...</h1>
+
+  <script>
+    // ✅ YOUR REAL FIREBASE CONFIG
+    var firebaseConfig = {
+      apiKey: "AIzaSyANpjWBgnG7Dw0dQFdsmbcw5et5oT-6cxQ",
+      authDomain: "buggy-nitt.firebaseapp.com",
+      databaseURL: "https://buggy-nitt-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "buggy-nitt",
+      storageBucket: "buggy-nitt.appspot.com",
+      messagingSenderId: "790523264958",
+      appId: "1:790523264958:web:b2e42c5e6f0952e2ad83ef"
+    };
+
+    // ✅ Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+
+    var db = firebase.database();
+
+    // ✅ HARD TEST — Read your real buggy data
+    db.ref("buggies").once("value")
+      .then(function(snapshot) {
+        document.getElementById("status").innerHTML =
+          "✅ FIREBASE IS 100% CONNECTED";
+        console.log("Buggy Data:", snapshot.val());
+      })
+      .catch(function(error) {
+        document.getElementById("status").innerHTML =
+          "❌ FIREBASE ERROR: " + error.message;
+        console.error(error);
+      });
+  </script>
+</body>
+</html>
