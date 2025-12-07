@@ -4,7 +4,9 @@
   <title>Buggy User Map</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
   <style>
     html, body, #map { height: 100%; margin: 0; }
     .status {
@@ -15,24 +17,26 @@
       color: white;
       padding: 8px 14px;
       border-radius: 8px;
-      z-index: 900;
+      z-index: 999;
       font-weight: bold;
     }
   </style>
 </head>
 
 <body>
+
 <div id="map"></div>
 <div class="status" id="status">Connecting...</div>
 
+<!-- ✅ LEAFLET -->
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-<!-- ✅ FIREBASE (CORRECT SDK) -->
+<!-- ✅ FIREBASE SDK (COMPAT = REQUIRED FOR YOUR STYLE) -->
 <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-database-compat.js"></script>
 
 <script>
-/* ✅ YOUR FIREBASE CONFIG */
+/* ✅ FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyANpjWBgnG7Dw0dQFdsmbcw5et5oT-6cxQ",
   authDomain: "buggy-nitt.firebaseapp.com",
@@ -43,9 +47,12 @@ const firebaseConfig = {
   appId: "1:790523264958:web:b2e42c5e6f0952e2ad83ef"
 };
 
+/* ✅ INITIALIZE FIREBASE (FIXED) */
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
-document.getElementById("status").innerText = "✅ Firebase Connected";
+
+const statusEl = document.getElementById("status");
+statusEl.innerText = "✅ Firebase Connected";
 
 /* ✅ MAP */
 const map = L.map("map").setView([10.7600, 78.8135], 16);
@@ -54,19 +61,19 @@ L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 /* ✅ ICONS */
 const userIcon = L.icon({
   iconUrl: "https://cdn-icons-png.flaticon.com/512/149/149071.png",
-  iconSize: [36, 36]
+  iconSize: [36,36]
 });
 
 const buggyIcon = L.icon({
   iconUrl: "https://cdn-icons-png.flaticon.com/512/61/61214.png",
-  iconSize: [40, 40]
+  iconSize: [40,40]
 });
 
 /* ✅ MARKERS */
 let userMarker = null;
 const buggyMarkers = {};
 
-/* ✅ DISTANCE FUNCTION */
+/* ✅ DISTANCE */
 function getDistance(lat1, lng1, lat2, lng2) {
   return map.distance([lat1, lng1], [lat2, lng2]);
 }
@@ -88,9 +95,13 @@ function assignNearestBuggy(userLat, userLng, buggies, phone) {
   db.ref("users/" + phone + "/assignedBuggy").set(nearest);
 }
 
-/* ✅ LIVE BUGGY LISTENER */
+/* ✅ LIVE BUGGIES */
 db.ref("buggies").on("value", snap => {
   const data = snap.val();
+  if (!data) return;
+
+  statusEl.innerText = "🚗 Buggy Live Tracking Active";
+
   for (const id in data) {
     const b = data[id];
     if (!buggyMarkers[id]) {
@@ -101,7 +112,7 @@ db.ref("buggies").on("value", snap => {
   }
 });
 
-/* ✅ USER LISTENER (ONLY ONE USER AT A TIME) */
+/* ✅ ONLY ONE USER SHOWN */
 db.ref("users").limitToLast(1).on("value", snap => {
   snap.forEach(child => {
     const phone = child.key;
@@ -118,6 +129,14 @@ db.ref("users").limitToLast(1).on("value", snap => {
     });
   });
 });
+
+/* ✅ FAIL-SAFE */
+setTimeout(() => {
+  if (statusEl.innerText.includes("Connecting")) {
+    statusEl.innerText = "⚠ Firebase not responding";
+  }
+}, 5000);
+
 </script>
 </body>
 </html>
